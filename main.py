@@ -1,6 +1,7 @@
 import csv
 import sqlite3
 import time
+import re
 from multiprocessing import Pool
 
 
@@ -10,6 +11,7 @@ def case1(file):
     with open(file, 'r') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
+            transformed_row = etl_process(row)
             # ETL process here
             pass
     end_time = time.time()
@@ -25,42 +27,65 @@ def case2(file):
     with open(file, 'r') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
-            c.execute('''INSERT INTO csv_data (column1, column2, column3) VALUES (?, ?, ?)''', row)
+            c.execute('''INSERT INTO csv_data (column1, column2, column3) VALUES (?, ?, ?)''', (row[0], row[1], row[2]))
+
     conn.commit()
     c.execute('''SELECT * FROM csv_data''')
     data = c.fetchall()
-    # ETL process here on data
+    transformed_data = etl_process(data)
     with open('new_' + file, 'w', newline='') as new_csvfile:
         writer = csv.writer(new_csvfile)
-        writer.writerows(data)
+        writer.writerows(transformed_data)
     end_time = time.time()
     return end_time - start_time
 
 
 # Case 3: (Extension of Case 2 using multithreading) File Created in Case 2 can be split into various files each having various number of records. Implement etl process using multithreading process with pipelinining concept
-def case3(file):
-    def etl_process(rows):
-        # ETL process here
-        pass
 
+def etl_process(row):
+    id, firstname, email, email2, profession = row[:5]
+    column1 = id
+    column2 = firstname[0].upper()
+    column3 = f"{email}; {email2}"
+    transformed_row = (column1, column2, column3, profession)
+    return transformed_row
+
+
+def process_chunk(data_chunk):
+    transformed_data = []
+    for row in data_chunk:
+        transformed_row = etl_process(row)
+        transformed_data.append(transformed_row)
+    return transformed_data
+
+def case3(file):
     start_time = time.time()
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS csv_data (column1, column2, column3)''')
     with open(file, 'r') as csvfile:
         reader = csv.reader(csvfile)
-        for row in reader:
-            c.execute('''INSERT INTO csv_data (column1, column2, column3) VALUES (?, ?, ?)''', row)
-    conn.commit()
-    c.execute('''SELECT * FROM csv_data''')
-    data = c.fetchall()
+        data = [row for row in reader]
+    
     num_threads = 4
     rows_per_thread = len(data) // num_threads
+
     with Pool(num_threads) as p:
-        p.map(etl_process, [data[i:i+rows_per_thread] for i in range(0, len(data), rows_per_thread)])
+        results = []
+        for i in range(0, len(data), rows_per_thread):
+            chunk = data[i:i+rows_per_thread]
+            results.append(p.apply_async(process_chunk, args=(chunk,)))
+        p.close()
+        p.join()
+
+    transformed_data = []
+    for r in results:
+        transformed_data += r.get()
+
     with open('new_' + file, 'w', newline='') as new_csvfile:
         writer = csv.writer(new_csvfile)
-        writer.writerows(data)
+        writer.writerows(transformed_data)
+
     end_time = time.time()
     return end_time - start_time
 
@@ -93,9 +118,9 @@ if __name__ == '__main__':
     # Plotting the execution times for each method and each CSV file
     import matplotlib.pyplot as plt
 
-    plt.plot(num_records, case1_times, label="Method 1 - Case 1")
-    plt.plot(num_records, case2_times, label="Method 2 - Case 2")
-    plt.plot(num_records, case3_times, label="Method 3 - Case 3")
+    plt.plot(num_records, case1_times, label="Case 1")
+    plt.plot(num_records, case2_times, label="Case 2")
+    plt.plot(num_records, case3_times, label="Case 3")
     plt.xlabel("Number of Records")
     plt.ylabel("Execution Time (Seconds)")
     plt.title("Comparison of Execution Times for Different ELT Methods")
