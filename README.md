@@ -35,7 +35,7 @@ The results of the performance comparison are plotted using matplotlib. The x-ax
 
 The results show that Case 1 is the slowest method for processing CSV files, as it takes a significantly longer time to process large files. Case 2 and Case 3 have similar execution times, but Case 3 has a slight advantage in terms of performance.
 
-![Comparison](Figure_1.png)
+![Figure_1](Figure_1.png)
 
 ## Conclusion
 
