@@ -1,9 +1,11 @@
 import csv
 import sqlite3
 import time
-import re
+import os
 from multiprocessing import Pool
 
+if not os.path.exists('new_files'):
+    os.makedirs('new_files')
 
 # Case 1: Take records one by one from the CSV, apply ETL one by one
 def case1(file):
@@ -13,7 +15,7 @@ def case1(file):
         for row in reader:
             transformed_row = etl_process(row)
             # ETL process here
-            pass
+            print(transformed_row)
     end_time = time.time()
     return end_time - start_time
 
@@ -92,7 +94,7 @@ def case3(file):
 
 # Main function to run the three methods on each CSV file and plot the results
 if __name__ == '__main__':
-    files = ['file1.csv', 'file2.csv', 'file3.csv', 'file4.csv', 'file5.csv', 'file6.csv']
+    files = ['files/file1.csv', 'files/file2.csv', 'files/file3.csv', 'files/file4.csv', 'files/file5.csv', 'files/file6.csv']
     num_records = [1000, 10000, 20000, 30000, 40000, 50000]
     # Method 1: Case 1 - Take records one by one from the CSV, apply ETL one by one
     case1_times = []
